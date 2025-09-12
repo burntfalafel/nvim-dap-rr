@@ -1,4 +1,6 @@
 local dap = require("dap")
+-- TODO: This is hardcoded at the moment. Externalise this by making this an `opt`!
+local isim_path = "/home/easwad01/workspace/PVModelLib/trunk/work/fastsim/TopLevelTests/AEMv8-A/../../../build/gcc-10.3.0/dbg/Platforms/LISA/Validation/Build_AEMvA/Linux64-Debug-GCC-10.3/isim_system"
 
 local get_rust_gdb_path = function()
   local toolchain_location = string.gsub(vim.fn.system("rustc --print sysroot"), "\n", "")
@@ -18,26 +20,65 @@ if has_telescope then
 
   find_program = function()
     return coroutine.create(function(coro)
-      local opts = {}
-      pickers
-        .new(opts, {
-          prompt_title = "Path to executable",
-          finder = finders.new_oneshot_job(
-            { "fd", "--hidden", "--exclude", ".git", "--no-ignore", "--type", "x" },
-            {}
-          ),
-          sorter = conf.generic_sorter(opts),
-          attach_mappings = function(buffer_number)
-            actions.select_default:replace(function()
-              actions.close(buffer_number)
-              coroutine.resume(coro, action_state.get_selected_entry()[1])
-            end)
-            return true
-          end,
-        })
-        :find()
-    end)
-  end
+    local opts = {}
+    ---------------------------------------------------------------------------
+    -- 1.  **Mini-picker** with just two rows: hard-coded path + “Browse…”
+    ---------------------------------------------------------------------------
+    pickers.new(opts, {
+      prompt_title = "Choose executable",
+      finder = finders.new_table({
+        results = {
+          { value = isim_path,     display = "isim_system",  ordinal = isim_path },
+          { value = "__browse__",  display = "Browse…",      ordinal = "Browse" },
+        },
+        entry_maker = function(item)
+          return {
+            value    = item.value,
+            display  = item.display,
+            ordinal  = item.ordinal,
+          }
+        end,
+      }),
+      sorter = conf.generic_sorter(opts),
+
+      attach_mappings = function(bufnr)
+        actions.select_default:replace(function()
+          local selection = action_state.get_selected_entry().value
+          actions.close(bufnr)
+
+          -------------------------------------------------------------------
+          -- 1a. If the user picked the hard-coded entry, return it.
+          -------------------------------------------------------------------
+          if selection ~= "__browse__" then
+            coroutine.resume(coro, selection)
+            return
+          end
+
+          -------------------------------------------------------------------
+          -- 2. Otherwise start the **normal** executable picker (fd).
+          -------------------------------------------------------------------
+          pickers.new(opts, {
+            prompt_title = "Path to executable",
+            finder = finders.new_oneshot_job(
+              { "fd", "--exclude", ".git", "--no-ignore", "--type", "x" }, {}
+            ),
+            sorter = conf.generic_sorter(opts),
+
+            attach_mappings = function(bufnr2)
+              actions.select_default:replace(function()
+                local entry = action_state.get_selected_entry()[1]
+                actions.close(bufnr2)
+                coroutine.resume(coro, entry)
+              end)
+              return true
+            end,
+          }):find()
+        end)
+        return true
+      end,
+    }):find()
+  end)
+end
 else
   find_program = function()
     return vim.fn.input("Path to executable: ", vim.fn.getcwd() .. "/", "file")
