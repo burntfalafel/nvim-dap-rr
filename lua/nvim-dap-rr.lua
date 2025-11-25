@@ -1,6 +1,6 @@
 local dap = require("dap")
 -- TODO: This is hardcoded at the moment. Externalise this by making this an `opt`!
-local isim_path = "/home/easwad01/workspace/PVModelLib/trunk/work/fastsim/TopLevelTests/AEMv8-A/../../../build/gcc-10.3.0/dbg/Platforms/LISA/Validation/Build_AEMvA/Linux64-Debug-GCC-10.3/isim_system"
+local isim_path = "/home/easwad01/workspace/PVModelLib/trunk/work/fastsim/TopLevelTests/AEMv8-A/../../../build/gcc-12.3.0/dbg/Platforms/LISA/Validation/Build_AEMvA/Linux64-Debug-GCC-12.3/isim_system"
 
 local get_rust_gdb_path = function()
   local toolchain_location = string.gsub(vim.fn.system("rustc --print sysroot"), "\n", "")
